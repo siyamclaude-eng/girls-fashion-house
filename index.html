@@ -402,7 +402,7 @@ function norm(d){d=d||{};const s=Object.assign({},DEF,d.s||{});
  const bn=x=>({id:String(x.id||('b'+Math.random().toString(36).slice(2,6))),img:String(x.img||''),badge:String(x.badge||''),title:String(x.title||''),sub:String(x.sub||''),btn:String(x.btn||''),link:String(x.link||''),tone:x.tone==='dark'?'dark':'light',style:['wave','circle'].includes(x.style)?x.style:'classic',color:/^#[0-9a-f]{6}$/i.test(x.color||'')?x.color:'#0f1b3d',auto:x.auto!==false});
  return{v:1,s,c,p,b:(Array.isArray(d.b)?d.b:[]).filter(x=>x&&x.img).slice(0,5).map(bn),promo:d.promo&&d.promo.img?Object.assign(bn(d.promo),{on:d.promo.on!==false}):null}}
 let LIVE=norm(JSON.parse($('#data').textContent)),D=clone(LIVE),LJ=JSON.stringify(LIVE);
-let ADMIN=false,KNOWN=false,caps={},OR=[],ORS='off';
+let ADMIN=false,KNOWN=false,caps={},OR=[],ORS='off',SA=false;
 const dirty=()=>JSON.stringify(D)!==LJ;
 const byId=id=>D.p.find(p=>p.id===id),catOf=id=>D.c.find(c=>c.id===id);
 const shown=()=>D.p.filter(p=>!p.hide),inCat=id=>shown().filter(p=>p.c===id),liveCats=()=>D.c.filter(c=>inCat(c.id).length);
@@ -571,7 +571,7 @@ const shellHTML=$('#root').innerHTML.replace(/<div id="admin"[^>]*>[\s\S]*?<\/di
 async function publish(){if(pubBusy||!dirty())return;const pr=problems();if(pr.length){toast(pr[0][1],true);location.hash='admin-'+pr[0][0];return}
  if(!caps.artifact){toast('Publishing is not available in this view. Open the page from your Claude artifacts list as the owner.',true);return}
  pubBusy=true;updateBar();
- try{const html=buildDoc(D);if(html.length>14e6)throw{code:'too_large'};await caps.artifact.publish(html);LIVE=clone(D);LJ=JSON.stringify(LIVE);try{localStorage.removeItem(DK)}catch(e){}pubBusy=false;updateBar();toast('Published. Your shop is updated.')}
+ try{const html=buildDoc(D);if(html.length>14e6)throw{code:'too_large'};await caps.artifact.publish(html);LIVE=clone(D);LJ=JSON.stringify(LIVE);try{localStorage.removeItem(DK)}catch(e){}pubBusy=false;updateBar();toast(SA?'Saved to GitHub. The live site updates in 1 to 2 minutes.':'Published. Your shop is updated.')}
  catch(e){pubBusy=false;persist();updateBar();const c=e&&e.code;toast(c==='conflict'?'Someone else published first. Your changes are saved on this device. The page will reload.':c==='not_writer'||c==='not_granted'||c==='consent_required'?'You do not have permission to publish this page.':c==='too_large'?'The shop is too large to publish. Remove some photos or products.':c==='rate_limited'?'Publishing too often. Wait a minute and try again.':'Could not publish. Check your connection and try again. Your changes are saved on this device.',true)}}
 
 /* ---------- admin: photos ---------- */
@@ -585,12 +585,26 @@ async function uploadFile(file,o){const blob=await prep(file,o);const u=await ne
 const upErr=e=>{const c=e&&e.code;return c==='type'?'That file is not a photo. Use a JPG or PNG.':c==='big'?'That photo is too large. Use one under 30 MB.':c==='too_large'?'That photo is too large.':c==='quota_or_state'?'The shop has reached its size limit. Remove unused photos or products first.':c==='rate_limited'?'Too many uploads. Wait a minute and try again.':c==='noassets'||c==='not_granted'||c==='capability_disabled'?'Photo upload is not available in this view.':'Upload failed. Check your connection and try again.'};
 
 /* ---------- admin: shell ---------- */
+/* ---------- standalone admin (own hosting, publishes to GitHub) ---------- */
+const GK='gfh-gh';
+function ghGuess(){const m=location.hostname.match(/^([^.]+)\.github\.io$/),s=location.pathname.split('/').filter(Boolean)[0];return m&&s&&s!=='admin'?m[1]+'/'+s:''}
+async function ghApi(repo,tok,path,opt){opt=opt||{};const r=await fetch('https://api.github.com/repos/'+repo+path,{method:opt.method||'GET',headers:{Authorization:'Bearer '+tok,Accept:'application/vnd.github+json','Content-Type':'application/json'},body:opt.body?JSON.stringify(opt.body):undefined});let j=null;try{j=await r.json()}catch(e){}return{ok:r.ok,s:r.status,j}}
+function b64(s){const b=new TextEncoder().encode(s);let o='';for(let i=0;i<b.length;i+=30000)o+=String.fromCharCode.apply(null,b.subarray(i,i+30000));return btoa(o)}
+function saCaps(repo,tok){caps={user:null,assets:null,db:null,
+ artifact:{publish:async()=>{const g=await ghApi(repo,tok,'/contents/index.html');if(g.s===401||g.s===403)throw{code:'not_writer'};const body={message:'Update shop',content:b64(siteFile())};if(g.ok&&g.j&&g.j.sha)body.sha=g.j.sha;else if(g.s!==404)throw{code:'net'};const p=await ghApi(repo,tok,'/contents/index.html',{method:'PUT',body});if(p.s===401||p.s===403)throw{code:'not_writer'};if(p.s===409||p.s===422)throw{code:'conflict'};if(!p.ok)throw{code:'net'}}},
+ downloads:{save:async r=>{const u=URL.createObjectURL(new Blob([r.data],{type:'application/octet-stream'})),a=document.createElement('a');a.href=u;a.download=r.filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);return{status:'saved'}}}}}
+async function saLogin(repo,tok){if(!/^[\w.-]+\/[\w.-]+$/.test(repo))return'Write the repository as owner/name, for example siyamclaude-eng/girls-fashion-house.';if(!tok)return'Paste your GitHub token.';let r;try{r=await ghApi(repo,tok,'')}catch(e){return'Could not reach GitHub. Check your internet and try again.'}
+ if(r.s===401)return'GitHub did not accept this token. Check that you copied all of it.';if(r.s===404||r.s===403)return'This token cannot open that repository. Check the repository name and the token settings.';if(!r.ok)return'GitHub returned an error. Try again later.';if(!(r.j&&r.j.permissions&&r.j.permissions.push))return'This token can read the repository but cannot change it. Give it Contents: Read and write.';
+ try{localStorage.setItem(GK,JSON.stringify({r:repo,t:tok}))}catch(e){}saCaps(repo,tok);ADMIN=true;return''}
+async function saResume(){try{const o=JSON.parse(localStorage.getItem(GK)||'null');if(o&&o.r&&o.t){const r=await ghApi(o.r,o.t,'');if(r.ok&&r.j&&r.j.permissions&&r.j.permissions.push){saCaps(o.r,o.t);ADMIN=true;try{const d=localStorage.getItem(DK);if(d){const x=JSON.parse(d);if(x&&x.d&&JSON.stringify(norm(x.d))!==LJ)A.draft=x}}catch(e){}}else if(r.s===401)localStorage.removeItem(GK)}}catch(e){}}
+function saForm(m){return '<div class="w pad"><h1>Admin</h1><p style="margin:12px 0 16px;max-width:52ch">Sign in with a GitHub token to edit this shop. Only you can do this: the token stays on this device.</p><form class="card" id="gh-f" style="max-width:520px;display:grid;gap:12px"><label>GitHub repository<input id="gh-r" value="'+esc(ghGuess())+'" placeholder="owner/name" autocomplete="off"></label><label>GitHub token<input id="gh-t" type="password" placeholder="github_pat_…" autocomplete="off"></label><p class="fe" id="gh-e">'+esc(m||'')+'</p><button class="btn" type="submit">Sign in</button></form><details class="card" style="max-width:520px;margin-top:16px"><summary><b>How to get a token (one time)</b></summary><ol style="margin:10px 0 0 18px;display:grid;gap:6px"><li>Open github.com → your profile picture → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token.</li><li>Give it any name and set Expiration (for example 90 days).</li><li>Repository access: Only select repositories → choose this shop repository.</li><li>Permissions → Repository permissions → Contents: Read and write.</li><li>Generate, copy the token and paste it above.</li></ol></details><p style="margin-top:16px"><a class="btn o" href="#home">Back to shop</a></p></div>'}
 function gate(m,extra){return '<div class="w pad"><h1>Admin</h1><p style="margin:12px 0 20px;max-width:46ch">'+esc(m)+'</p>'+(extra||'')+'<a class="btn o" href="#home">Back to shop</a></div>'}
 function renderAdmin(){const box=$('#admin');
  if(!KNOWN){box.innerHTML=gate('Checking access…');return}
+ if(!ADMIN&&SA){box.innerHTML=saForm();return}
  if(!ADMIN){box.innerHTML=gate('Admin is only for the shop owner. Open this page from your Claude artifacts list while signed in to claude.ai.');return}
  const tabs=[['dashboard','Dashboard'],['orders','Orders'],['products','Products'],['banners','Banners'],['categories','Categories'],['shop','Shop info'],['backup','Backup']];
- box.innerHTML='<header class="ah"><div class="w"><a class="btn o sm" href="#home">← Shop</a><h1>Admin</h1><span id="chip" class="chip"></span><button class="btn sm" id="pubtop" data-a="a-pub">Publish</button></div></header>'
+ box.innerHTML='<header class="ah"><div class="w"><a class="btn o sm" href="#home">← Shop</a><h1>Admin</h1><span id="chip" class="chip"></span><button class="btn sm" id="pubtop" data-a="a-pub">Publish</button>'+(SA?'<button class="btn o sm" data-a="gh-out">Sign out</button>':'')+'</div></header>'
  +'<nav class="tabs w" aria-label="Admin sections">'+tabs.map(t=>'<a href="#admin-'+t[0]+'"'+(t[0]===A.tab?' aria-current="page"':'')+'>'+t[1]+'</a>').join('')+'</nav>'
  +'<main class="ab w" id="atab"></main><div class="pb" id="pbar" hidden></div>';
  drawTab();updateBar()}
@@ -613,7 +627,7 @@ const dFmt=ms=>{try{return new Date(ms).toLocaleDateString('en-GB',{day:'numeric
 const dayKey=ms=>{const d=new Date(ms);return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()};
 const phoneKey=p=>String(p||'').replace(/\D/g,'').replace(/^88/,'');
 function refreshOrders(){if(!$('#admin').hidden&&['dashboard','orders'].includes(A.tab)&&!$('#ed')&&!$('#dlg')&&!$('#osh'))drawTab()}
-function dbMsg(){return ORS==='ok'?'':'<div class="card"><h3>Orders</h3><p class="mu">'+(ORS==='load'?'Loading your orders…':ORS==='err'?'Could not load orders. Check your connection and reload the page.':'The order book is not available in this view. Open the page as the shop owner from your Claude artifacts list.')+'</p></div>'}
+function dbMsg(){return ORS==='ok'?'':'<div class="card"><h3>Orders</h3><p class="mu">'+(ORS==='load'?'Loading your orders…':ORS==='err'?'Could not load orders. Check your connection and reload the page.':(SA?'The order list is not available on this website. Orders arrive in your WhatsApp. The order list works only in the Claude version of the admin.':'The order book is not available in this view. Open the page as the shop owner from your Claude artifacts list.'))+'</p></div>'}
 function chart(days){const w=480,h=240,l=58,b=28,t0=12,mx=Math.max(1,...days.map(d=>d.v)),bw=(w-l-8)/days.length,y=v=>t0+(h-b-t0)*(1-v/mx);
  const nice=Math.ceil(mx/ (mx>=1000?1000:10))*(mx>=1000?1000:10)||1;
  return '<svg class="chart" viewBox="0 0 '+w+' '+h+'" role="img" aria-label="Revenue for the last 14 days">'+[0,.5,1].map(f=>'<line class="gl" x1="'+l+'" x2="'+(w-8)+'" y1="'+y(mx*f)+'" y2="'+y(mx*f)+'"/><text x="'+(l-6)+'" y="'+(y(mx*f)+4)+'" text-anchor="end">'+(f?(mx>1?fmt(Math.round(mx*f)):''):'0')+'</text>').join('')
@@ -839,7 +853,7 @@ top:()=>scrollTo({top:0,behavior:reduce?'auto':'smooth'}),
  'p-more':t=>{const id=t.dataset.id;A.open.has(id)?A.open.delete(id):A.open.add(id);A.delc=null;drawList()},
  'p-hide':t=>{const p=byId(t.dataset.id);p.hide=!p.hide;changed();drawList();drawStats()},'p-out':t=>{const p=byId(t.dataset.id);p.out=!p.out;changed();drawList();drawStats()},
  'p-up':t=>swap(t.dataset.id,-1),'p-dn':t=>swap(t.dataset.id,1),
- 'k-site':saveSite,'p-fb':async t=>{const p=byId(t.dataset.id);if(!p)return;const c=catOf(p.c),s=D.s,u=SB();const tx=p.n+(c?' ('+c.name+')':'')+'\n'+(p.price!=null?'Price: '+fmt(p.price):'Price: message us')+(s.delNote?'\n'+s.delNote:'')+'\n\nOrder on WhatsApp: '+(s.phone||('+'+s.wa))+(u?'\nSee picture and details: '+u+'#p-'+p.id:'');try{await navigator.clipboard.writeText(tx);toast('Facebook post text copied. Paste it into your post.')}catch(e){toast('Could not copy. Your browser blocked it.',true)}},
+ 'k-site':saveSite,'gh-out':()=>{try{localStorage.removeItem(GK)}catch(e){}caps={};ADMIN=false;updateBar();renderAdmin();toast('Signed out.')},'p-fb':async t=>{const p=byId(t.dataset.id);if(!p)return;const c=catOf(p.c),s=D.s,u=SB();const tx=p.n+(c?' ('+c.name+')':'')+'\n'+(p.price!=null?'Price: '+fmt(p.price):'Price: message us')+(s.delNote?'\n'+s.delNote:'')+'\n\nOrder on WhatsApp: '+(s.phone||('+'+s.wa))+(u?'\nSee picture and details: '+u+'#p-'+p.id:'');try{await navigator.clipboard.writeText(tx);toast('Facebook post text copied. Paste it into your post.')}catch(e){toast('Could not copy. Your browser blocked it.',true)}},
  'p-dup':t=>{const p=clone(byId(t.dataset.id));p.id=uid();p.n=p.n+' (copy)';p.hide=true;D.p.splice(D.p.findIndex(x=>x.id===t.dataset.id)+1,0,p);changed();drawList();drawStats();toast('Duplicated as hidden. Edit it, then show it.')},
  'p-delask':t=>{A.delc=t.dataset.id;drawList()},'p-delno':()=>{A.delc=null;drawList()},
  'p-del':t=>{const p=byId(t.dataset.id);D.p=D.p.filter(x=>x.id!==t.dataset.id);A.sel.delete(t.dataset.id);A.delc=null;changed();drawList();drawBulk();drawStats();toast('"'+p.n+'" deleted. Press Publish to remove it from the shop.')},
@@ -891,6 +905,7 @@ document.addEventListener('keydown',e=>{
  if(e.key!=='Tab')return;const m=$('#lb')||$$('.md').pop(),d=m||$('.dr.o');if(!d)return;const f=$$('a[href],button:not([disabled]),input:not([hidden]):not([type=hidden]),select,textarea',d).filter(x=>x.offsetParent!==null||x===document.activeElement);if(!f.length)return;const a=f[0],z=f[f.length-1];
  if(!d.contains(document.activeElement)){e.preventDefault();a.focus()}else if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus()}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus()}});
 document.addEventListener('submit',e=>{e.preventDefault();const f=e.target;
+ if(f.id==='gh-f'){const b=f.querySelector('button');b.disabled=true;saLogin($('#gh-r').value.trim(),$('#gh-t').value.trim()).then(m=>{b.disabled=false;if(m){$('#gh-e').textContent=m;return}updateBar();renderAdmin();toast('Signed in.')});return}
  if(f.id==='addcat'){const v=$('#newcat').value.trim(),m=$('#nc-e');if(!v){m.textContent='Enter a category name.';return}if(D.c.some(c=>c.name.toLowerCase()===v.toLowerCase())){m.textContent='That category already exists.';return}
   let id=slug(v)||('c'+Date.now().toString(36));while(D.c.some(c=>c.id===id)||id==='settings')id+='-'+Math.random().toString(36).slice(2,4);D.c.push({id,name:v});changed();drawTab();toast('Category added');return}
  if(f.id==='f'){const n=$('#n').value.trim(),m=$('#m').value.trim(),a=$('#a').value.trim(),o=$('#o').value.trim();
@@ -905,7 +920,7 @@ document.addEventListener('drop',e=>{if(!(E||BE)||!e.target.closest||!e.target.c
 addEventListener('hashchange',route);
 
 /* ---------- boot ---------- */
-async function boot(){saveCart();route();const c=window.claude;if(!c||!c.use){KNOWN=true;if(!$('#admin').hidden)renderAdmin();return}
+async function boot(){saveCart();route();const c=window.claude;if(!c||!c.use){SA=true;KNOWN=true;if(!$('#admin').hidden)renderAdmin();await saResume();updateBar();if(!$('#admin').hidden)renderAdmin();return}
  const g=n=>Promise.resolve().then(()=>c.use(n)).catch(()=>null);const[user,artifact,assets,downloads,odb]=await Promise.all([g('user'),g('artifact'),g('assets'),g('downloads'),g('db')]);caps={user,artifact,assets,downloads,db:odb};
  let ed=false;try{ed=!!(user&&await user.canEdit())}catch(e){}ADMIN=ed&&!!artifact;KNOWN=true;if(ADMIN&&caps.db){ORS='load';try{caps.db.collection('orders').orderBy('created','desc').onSnapshot(s=>{OR=s.docs.map(d=>Object.assign({},d.data(),{id:d.id}));ORS='ok';refreshOrders()},()=>{ORS='err';refreshOrders()})}catch(e){ORS='err'}}
  if(ADMIN){try{const r=localStorage.getItem(DK);if(r){const o=JSON.parse(r);if(o&&o.d&&JSON.stringify(norm(o.d))!==LJ)A.draft=o;else localStorage.removeItem(DK)}}catch(e){}}
