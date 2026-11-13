@@ -384,6 +384,20 @@ img{content-visibility:auto}
 .pi{padding:8px;-webkit-backdrop-filter:blur(10px)!important;backdrop-filter:blur(10px)!important;box-shadow:var(--gls)!important}
 .pi img{aspect-ratio:4/5!important;max-height:min(125vw,560px)!important;object-fit:contain!important}
 }
+/* ---------- lite mode for weak phones ---------- */
+@media(max-width:859px){
+body::after{display:none!important}
+html,body{background:#f4f8ff!important}
+.sl>img,.sl.on>img,.cr,.cr::before,.cr::after,.hst *{animation:none!important}
+.rv{transition-duration:.25s!important}
+*{text-shadow:none!important}
+.card,.kpi,.cd .im,.pi,.pw,.seg,input,textarea,select,.ch{box-shadow:0 1px 3px rgba(24,40,110,.1)!important}
+.btn,.ann,.bk,.tag{box-shadow:none!important}
+.hd,.dr,.sht,.ah,.tabs,.pi{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.hd,.tabs,.ah{background:rgba(255,255,255,.97)!important}
+.dr,.sht{background:#fff!important}
+.card,.kpi,.cd .im,.pi,.pw,.seg{background:#fff!important}
+}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}.rv{transform:none}}
 </style></head><body><div id="root">
 <div id="shop">
@@ -418,6 +432,9 @@ const uid=()=>'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
 const slug=s=>String(s).toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,24);
 const PH='data:image/svg+xml;utf8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10" fill="#eef2f8"/></svg>');
 const src=id=>!id?PH:/^(data:|https?:|\/|images\/)/.test(id)?id:'/_blob/'+id;
+const th=s=>/^images\/[^.\/]+\.\w+$/.test(s)?s.replace(/^images\/([^.\/]+)\.\w+$/,'images/t/$1.jpg'):s;
+const TI=id=>{const f=src(id);return 'src="'+esc(th(f))+'" data-f="'+esc(f)+'"'};
+document.addEventListener('error',e=>{const i=e.target;if(i&&i.tagName==='IMG'&&i.dataset&&i.dataset.f&&i.getAttribute('src')!==i.dataset.f)i.src=i.dataset.f},true);
 document.addEventListener('error',e=>{const t=e.target;if(t&&t.tagName==='IMG'&&!t.dataset.f){t.dataset.f='1';t.src=PH}},true);
 
 /* ---------- data ---------- */
@@ -457,15 +474,15 @@ const lt=i=>{const p=byId(i.id);return p.price==null?null:p.price*i.q},vt=i=>[i.
 const total=()=>cart.some(i=>lt(i)==null)?null:cart.reduce((s,i)=>s+lt(i),0);
 const sum=()=>{const t=total(),d=D.s.del;return '<dl class="sm"><div><dt>Items</dt><dd>'+(t==null?'Price confirmed on order':fmt(t))+'</dd></div><div><dt>Delivery</dt><dd>'+(d==null?'Confirmed on order':fmt(d))+'</dd></div><div class="tt"><dt>Total</dt><dd>'+(t==null?'Confirmed on order':d==null?fmt(t)+' + delivery':fmt(t+d))+'</dd></div></dl>'};
 const ic=d=>'<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+d+'</svg>';
-const card=(p,i)=>'<div class="cd rv" data-i="'+i+'" data-n="'+esc((p.n+' '+p.sku+' '+p.tags.join(' ')).toLowerCase())+'" data-pr="'+(p.price==null?'':p.price)+'"><a class="cl" href="#p-'+esc(p.id)+'"><div class="im"><img src="'+esc(src(p.imgs[0]))+'" alt="'+esc(p.n)+'" width="480" height="480" loading="lazy" decoding="async">'+(p.out?'<span class="tag">Sold out</span>':'')+'</div><h3>'+esc(p.n)+'</h3><p>'+priceH(p)+'</p></a>'+heart(p)+'</div>';
+const card=(p,i)=>'<div class="cd rv" data-i="'+i+'" data-n="'+esc((p.n+' '+p.sku+' '+p.tags.join(' ')).toLowerCase())+'" data-pr="'+(p.price==null?'':p.price)+'"><a class="cl" href="#p-'+esc(p.id)+'"><div class="im"><img '+TI(p.imgs[0])+' alt="'+esc(p.n)+'" width="480" height="480" loading="lazy" decoding="async">'+(p.out?'<span class="tag">Sold out</span>':'')+'</div><h3>'+esc(p.n)+'</h3><p>'+priceH(p)+'</p></a>'+heart(p)+'</div>';
 const rel=p=>{const o=shown().filter(x=>x.id!==p.id),a=o.filter(x=>x.c===p.c).concat(o.filter(x=>x.c!==p.c)).slice(0,4);return a.length?'<section class="sec"><div class="sh"><h2>You may also like</h2></div><div class="g">'+a.map(card).join('')+'</div></section>':''};
 const rvw=()=>{const a=rec.map(byId).filter(p=>p&&!p.hide).slice(0,4);return a.length?'<section class="w sec"><div class="sh"><h2>Recently viewed</h2></div><div class="g">'+a.map(card).join('')+'</div></section>':''};
 const sav=()=>{const ps=wish.map(byId).filter(p=>p&&!p.hide);return '<section class="w"><nav class="bc" aria-label="Breadcrumb"><a href="#home">Home</a> / Saved</nav><h1>Saved items</h1><p class="mu" style="margin:6px 0 24px">'+ps.length+' saved on this device</p>'+(ps.length?'<div class="g">'+ps.map(card).join('')+'</div>':'<p class="mu">Tap the heart on a product to save it here.</p>')+'</section>'};
-const tileOld=c=>{const f=inCat(c.id)[0];return '<a class="ct rv" href="#cat-'+esc(c.id)+'"><img src="'+esc(src(f.imgs[0]))+'" alt="" loading="lazy"><div><b>'+esc(c.name)+'</b><span>Shop now →</span></div></a>'};
+const tileOld=c=>{const f=inCat(c.id)[0];return '<a class="ct rv" href="#cat-'+esc(c.id)+'"><img '+TI(f.imgs[0])+' alt="" loading="lazy" decoding="async"><div><b>'+esc(c.name)+'</b><span>Shop now →</span></div></a>'};
 const tool=()=>'<div class="stb"><input id="sq" type="search" placeholder="Search products" aria-label="Search products" autocomplete="off"><select id="ssort" aria-label="Sort products"><option value="">Default order</option><option value="pa">Price: low to high</option><option value="pd">Price: high to low</option><option value="na">Name A to Z</option></select></div><p class="mu" id="snone" hidden>No products match your search.</p>';
 function gridFilter(){const g=$('#pg');if(!g)return;const q=($('#sq').value||'').trim().toLowerCase(),so=$('#ssort').value,cs=[...g.children];let n=0;
  cs.sort((a,b)=>{const pa=a.dataset.pr===''?Infinity:+a.dataset.pr,pb=b.dataset.pr===''?Infinity:+b.dataset.pr;return so==='pa'?pa-pb:so==='pd'?(a.dataset.pr===''?1:b.dataset.pr===''?-1:pb-pa):so==='na'?a.dataset.n.localeCompare(b.dataset.n):a.dataset.i-b.dataset.i}).forEach(c=>{const m=!q||c.dataset.n.includes(q);c.hidden=!m;if(m)n++;g.appendChild(c)});$('#snone').hidden=n>0}
-const tile=c=>{const f=inCat(c.id)[0];return '<a class="cc rv" href="#cat-'+esc(c.id)+'"><span class="ci"><img src="'+esc(src(f.imgs[0]))+'" alt="" loading="lazy"></span><b>'+esc(c.name)+'</b></a>'};
+const tile=c=>{const f=inCat(c.id)[0];return '<a class="cc rv" href="#cat-'+esc(c.id)+'"><span class="ci"><img '+TI(f.imgs[0])+' alt="" loading="lazy" decoding="async"></span><b>'+esc(c.name)+'</b></a>'};
 function lnk(b){const l=b.link||'',mk=(h,x)=>'href="'+h+'"'+(x||'');if(l==='wa'&&D.s.wa)return mk('https://wa.me/'+esc(D.s.wa),' target="_blank" rel="noopener"');if(/^cat-/.test(l)&&catOf(l.slice(4)))return mk('#'+esc(l));if(/^p-/.test(l)&&byId(l.slice(2)))return mk('#'+esc(l));if(l==='saved')return mk('#saved');return mk('#',' data-a="scroll"')}
 function slide(b,i){const tx='<div class="sx">'+(b.badge?'<span class="bg">'+esc(b.badge)+'</span>':'<span></span>')+(b.title?(i?'<h2>':'<h1>')+esc(b.title)+(i?'</h2>':'</h1>'):'<span></span>')+(b.sub?'<p>'+esc(b.sub)+'</p>':'<span></span>')+(b.btn?'<a class="btn bb" '+lnk(b)+'>'+esc(b.btn)+' →</a>':'')+'</div>',im=esc(src(b.img)),cl='sl'+(i?'':' on')+(b.tone==='dark'?' dark':''),ar=' aria-hidden="'+(i>0)+'"'+(b.auto?' data-auto="1"':''),ld=i?' loading="lazy"':' fetchpriority="high" decoding="async"',ov='<a class="sla" '+lnk(b)+(b.btn?' tabindex="-1" aria-hidden="true"':' aria-label="'+esc(b.title||b.badge||'Open banner')+'"')+'></a>';
  if(b.style==='wave')return '<article class="'+cl+' st-wave" style="--pc:'+esc(b.color)+'"'+ar+'><div class="smg"><img src="'+im+'" alt=""'+ld+'></div>'+ov+tx+'</article>';
@@ -492,7 +509,7 @@ const opts=(k,l,a)=>'<fieldset class="op"><legend>'+l+'</legend>'+a.map(v=>'<but
 function prod(id){const p=byId(id);if(!p||(p.hide&&!ADMIN))return '<section class="w pad"><h1>This product is not available</h1><p style="margin-top:14px"><a class="btn" href="#home">Back to shop</a></p></section>';
  const c=catOf(p.c),im=p.imgs.length?p.imgs:[''];
  return '<div class="w"><nav class="bc" aria-label="Breadcrumb"><a href="#home">Home</a>'+(c?' / <a href="#cat-'+esc(c.id)+'">'+esc(c.name)+'</a>':'')+'</nav><div class="pd"><div class="gal"><div class="pi" id="pi"><img id="pm" data-a="zoom" src="'+esc(src(im[0]))+'" alt="'+esc(p.n)+'" width="480" height="480">'+(im.length>1?'<button class="gn gp" data-a="gal" data-d="-1" aria-label="Previous photo">‹</button><button class="gn gx" data-a="gal" data-d="1" aria-label="Next photo">›</button>':'')+'<button class="zm" data-a="zoom" aria-label="View photo larger"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4M11 8v6M8 11h6"/></svg></button></div>'
- +(im.length>1?'<div class="ths">'+im.map((x,i)=>'<button type="button" data-a="thumb" data-i="'+i+'" aria-label="Show photo '+(i+1)+'" aria-current="'+(i===0)+'"><img src="'+esc(src(x))+'" alt="" loading="lazy" decoding="async"></button>').join('')+'</div>':'')
+ +(im.length>1?'<div class="ths">'+im.map((x,i)=>'<button type="button" data-a="thumb" data-i="'+i+'" aria-label="Show photo '+(i+1)+'" aria-current="'+(i===0)+'"><img '+TI(x)+' alt="" loading="lazy" decoding="async"></button>').join('')+'</div>':'')
  +'</div><div class="pf"><div class="ttl"><h1>'+esc(p.n)+'</h1>'+heart(p,true)+'</div>'+(c?'<p class="mu">'+esc(c.name)+'</p>':'')+'<p class="pr">'+priceH(p)+'</p>'+(p.price==null?'<p class="mu">The price is confirmed when you send your order.</p>':'')+(p.desc?'<p class="ds">'+esc(p.desc)+'</p>':'')
  +(!p.out&&p.stock!=null&&p.stock>0&&p.stock<=5?'<p class="nt">Only '+p.stock+' left.</p>':'')+(p.sku?'<p class="mu" style="font-size:.88rem">Code: '+esc(p.sku)+'</p>':'')+(p.hide?'<p class="nt">Hidden from customers. Only you can see this page.</p>':'')
  +(p.out?'<p class="nt">Sold out right now.'+(D.s.phone?' Call '+esc(D.s.phone)+' to ask when it is back.':'')+'</p>':
@@ -618,10 +635,11 @@ async function ghApi(repo,tok,path,opt){opt=opt||{};const r=await fetch('https:/
 function b64(s){const b=new TextEncoder().encode(s);let o='';for(let i=0;i<b.length;i+=30000)o+=String.fromCharCode.apply(null,b.subarray(i,i+30000));return btoa(o)}
 const UP={};
 async function shaHex(s){const b=await crypto.subtle.digest('SHA-1',new TextEncoder().encode(s));return Array.from(new Uint8Array(b)).slice(0,10).map(x=>x.toString(16).padStart(2,'0')).join('')}
+function mkThumb(v){return new Promise(res=>{const im=new Image();im.onload=()=>{const k=Math.min(1,420/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.72).split(',')[1])};im.onerror=()=>res('');im.src=v})}
 async function ghImgs(repo,tok,d){const L=[];(function w(o){for(const k in o){const v=o[k];if(typeof v==='string'){if(v.slice(0,11)==='data:image/')L.push([o,k])}else if(v&&typeof v==='object')w(v)}})(d);
  let i=0;for(const e of L){const o=e[0],k=e[1],v=o[k];i++;let u=UP[v];if(!u){const c=v.indexOf(','),mm=v.slice(0,c).match(/^data:image\/(\w+)/);if(c<0||!mm)continue;const ext=mm[1]==='jpeg'?'jpg':mm[1],path='images/'+await shaHex(v)+'.'+ext;toast('Uploading photos '+i+' of '+L.length+'…');
   const r=await ghApi(repo,tok,'/contents/'+path,{method:'PUT',body:{message:'Add photo',content:v.slice(c+1)}});
-  if(r.s===401)throw{code:'not_writer'};if(r.s===403||r.s===429)throw{code:(r.j&&/rate/i.test(r.j.message||''))?'rate_limited':'not_writer'};if(!(r.ok||r.s===422||r.s===409))throw{code:'net'};u=UP[v]=path}o[k]=u}}
+  if(r.s===401)throw{code:'not_writer'};if(r.s===403||r.s===429)throw{code:(r.j&&/rate/i.test(r.j.message||''))?'rate_limited':'not_writer'};if(!(r.ok||r.s===422||r.s===409))throw{code:'net'};try{const tb=await mkThumb(v);if(tb){const h=path.split('/')[1].replace(/\.\w+$/,'');await ghApi(repo,tok,'/contents/images/t/'+h+'.jpg',{method:'PUT',body:{message:'Add thumbnail',content:tb}})}}catch(e){}u=UP[v]=path}o[k]=u}}
 function saCaps(repo,tok){caps={user:null,assets:null,db:null,
  artifact:{publish:async()=>{const d=clone(D);await ghImgs(repo,tok,d);const g=await ghApi(repo,tok,'/contents/index.html');if(g.s===401||g.s===403)throw{code:'not_writer'};const body={message:'Update shop',content:b64(siteFile(d))};if(g.ok&&g.j&&g.j.sha)body.sha=g.j.sha;else if(g.s!==404)throw{code:'net'};const p=await ghApi(repo,tok,'/contents/index.html',{method:'PUT',body});if(p.s===401||p.s===403)throw{code:'not_writer'};if(p.s===409||p.s===422)throw{code:'conflict'};if(!p.ok)throw{code:'net'};try{const q=await ghApi(repo,tok,'');if(q.ok&&q.j&&q.j.size)GHSZ=q.j.size/1024}catch(e){}}},
  downloads:{save:async r=>{const u=URL.createObjectURL(new Blob([r.data],{type:'application/octet-stream'})),a=document.createElement('a');a.href=u;a.download=r.filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);return{status:'saved'}}}}}
