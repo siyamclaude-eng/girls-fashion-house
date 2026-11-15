@@ -435,7 +435,7 @@ img[data-f].ld{opacity:1;animation:none}
 .hd .brand img.wide{width:auto;height:40px;max-width:62vw;background:#fff;border-radius:12px;padding:3px 10px;filter:none;mix-blend-mode:normal}
 .hd .brand img.wide.hw{background:none;padding:0;border-radius:0;height:44px;max-width:64vw;filter:drop-shadow(0 1px 2px rgba(10,40,100,.35))}
 .hd .bdg{background:#fff;color:#12418a}
-.sl.fit{background:#0f1b3d}.sl.fit>img{object-fit:contain!important;position:relative}.sl.fit::before{content:"";position:absolute;inset:-40px;background:var(--u) center/cover no-repeat;filter:blur(28px) saturate(1.15);opacity:.95}
+.hs.ar{margin-left:auto;margin-right:auto}.hs.ar .hst{height:auto!important;aspect-ratio:var(--r)}.hs.ar .sl>img{object-fit:cover}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}.rv{transform:none}}
 </style></head><body><div id="root">
 <div id="shop">
@@ -474,7 +474,7 @@ const PH='data:image/svg+xml;utf8,'+encodeURIComponent('<svg xmlns="http://www.w
 const src=id=>!id?PH:/^(data:|https?:|\/|images\/)/.test(id)?id:'/_blob/'+id;
 const th=s=>/^images\/[^.\/]+\.\w+$/.test(s)?s.replace(/^images\/([^.\/]+)\.\w+$/,'images/t/$1.jpg'):s;
 const TI=id=>{const f=src(id);return 'src="'+esc(th(f))+'" data-f="'+esc(f)+'"'};
-document.addEventListener('load',e=>{const i=e.target;if(i&&i.tagName==='IMG')i.classList.add('ld')},true);
+document.addEventListener('load',e=>{const i=e.target;if(!i||i.tagName!=='IMG'||!i.parentNode||!i.parentNode.classList||!i.parentNode.classList.contains('sl'))return;const h=i.closest('.hs');if(!h||h.classList.contains('ar')||i.parentNode!==h.querySelector('.sl'))return;const r=i.naturalWidth/(i.naturalHeight||1);if(!(r>0.4&&r<4))return;h.style.setProperty('--r',r.toFixed(4));h.style.maxWidth=Math.round(Math.min(560*r,1400))+'px';h.classList.add('ar')},true);
 document.addEventListener('error',e=>{const i=e.target;if(i&&i.tagName==='IMG'&&i.dataset&&i.dataset.f&&i.getAttribute('src')!==i.dataset.f)i.src=i.dataset.f},true);
 document.addEventListener('error',e=>{const t=e.target;if(t&&t.tagName==='IMG'&&!t.dataset.f){t.dataset.f='1';t.src=PH}},true);
 
