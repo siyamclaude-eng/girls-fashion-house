@@ -435,6 +435,7 @@ img[data-f].ld{opacity:1;animation:none}
 .hd .brand img.wide{width:auto;height:40px;max-width:62vw;background:#fff;border-radius:12px;padding:3px 10px;filter:none;mix-blend-mode:normal}
 .hd .brand img.wide.hw{background:none;padding:0;border-radius:0;height:44px;max-width:64vw;filter:drop-shadow(0 1px 2px rgba(10,40,100,.35))}
 .hd .bdg{background:#fff;color:#12418a}
+.sl.fit{background:#0f1b3d}.sl.fit>img{object-fit:contain!important;position:relative}.sl.fit::before{content:"";position:absolute;inset:-40px;background:var(--u) center/cover no-repeat;filter:blur(28px) saturate(1.15);opacity:.95}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}.rv{transform:none}}
 </style></head><body><div id="root">
 <div id="shop">
@@ -613,6 +614,7 @@ document.addEventListener('pointerup',e=>{if(!(e.target.closest&&e.target.closes
 document.addEventListener('pointermove',e=>{if(e.pointerType!=='mouse')return;const c=e.target.closest&&e.target.closest('.cd .im');if(!c||reduce)return;const r=c.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;c.style.transform='perspective(700px) rotateY('+(x*7)+'deg) rotateX('+(-y*7)+'deg) translateY(-4px)'});
 document.addEventListener('pointerout',e=>{const c=e.target.closest&&e.target.closest('.cd .im');if(c&&!(e.relatedTarget&&c.contains(e.relatedTarget)))c.style.transform=''});
 let ly=0,tk=false;
+document.addEventListener('load',e=>{const i=e.target;if(!i||i.tagName!=='IMG'||!i.parentNode||!i.parentNode.classList||!i.parentNode.classList.contains('sl'))return;const r=i.naturalWidth/(i.naturalHeight||1);if(r<1.7){const s=i.currentSrc||i.src;i.parentNode.style.setProperty('--u','url("'+s.replace(/"/g,'%22')+'")');i.parentNode.classList.add('fit')}},true);
 addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target&&e.target.id==='e-url'){e.preventDefault();const b=document.querySelector('[data-a="e-addurl"]');if(b)b.click()}});
 addEventListener('scroll',()=>{if(tk)return;tk=true;requestAnimationFrame(()=>{tk=false;if($('#shop').hidden)return;const y=scrollY,mx=document.documentElement.scrollHeight-innerHeight,hd=$('.hd');$('#prg').style.transform='scaleX('+(mx>0?Math.min(1,y/mx):0)+')';hd.classList.toggle('sc',y>8);if(!$('.dr.o')){if(y>140&&y>ly+8)hd.classList.add('hide');else if(y<ly-8||y<100)hd.classList.remove('hide')}ly=y;$('#bt').classList.toggle('on',y>700)})},{passive:true});
 let sx=0,sy=0,st=0;
